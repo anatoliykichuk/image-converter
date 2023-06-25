@@ -1,9 +1,8 @@
 package com.geekbrains.imageconverter.ui
 
 import android.content.Intent
-import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
 import com.geekbrains.imageconverter.databinding.ActivityMainBinding
@@ -11,9 +10,6 @@ import com.geekbrains.imageconverter.domain.MainPresenter
 import com.geekbrains.imageconverter.domain.MainView
 import moxy.MvpAppCompatActivity
 import moxy.ktx.moxyPresenter
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
 
 
 private const val GALLERY_REQUEST_CODE = 1
@@ -33,7 +29,7 @@ class MainActivity : MvpAppCompatActivity(), MainView {
         setContentView(binding.root)
 
         binding.convertImageButton.setOnClickListener {
-            selectJpegImageFile()
+            presenter.showImagePicker()
         }
     }
 
@@ -47,55 +43,28 @@ class MainActivity : MvpAppCompatActivity(), MainView {
 
         when (requestCode) {
             GALLERY_REQUEST_CODE -> {
-
-                val selectedJpegImageFileUri = data?.getData()
-                val selectedJpegImageFileName = selectedJpegImageFileUri?.getLastPathSegment()
-                    .toString()
-
-                val jpegImageFile = MediaStore.Images.Media
-                    .getBitmap(getContentResolver(), selectedJpegImageFileUri)
-
-                savePngImageFile(jpegImageFile, selectedJpegImageFileName)
+                data?.getData()?.let {
+                    presenter.onImageSelected(it)
+                }
             }
         }
     }
 
-    private fun selectJpegImageFile() {
-        val photoPickerIntent = Intent(Intent.ACTION_PICK)
-
-        photoPickerIntent.setType("image/jpeg")
-        startActivityForResult(photoPickerIntent, GALLERY_REQUEST_CODE)
+    override fun showImagePicker() {
+        val imagePickerIntent = Intent(Intent.ACTION_PICK).apply {
+            setType("image/jpeg")
+        }
+        startActivityForResult(imagePickerIntent, GALLERY_REQUEST_CODE)
     }
 
-    private fun savePngImageFile(jpegImageFile: Bitmap, fileName: String) {
-        var outputStream: FileOutputStream? = null
-        var message: String = ""
+    override fun onImageSelected(imageUri: Uri) {
+        val imageName = imageUri.getLastPathSegment().toString()
+        val image = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri)
 
-        try {
-            outputStream = FileOutputStream(
-                File(
-                    Environment
-                        .getExternalStorageDirectory()
-                        .toString() + "/Pictures", "$fileName.png"
-                )
-            )
+        presenter.convertImageToPng(image, imageName)
+    }
 
-            jpegImageFile.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-            message = "The $fileName.png saved"
-
-        } catch (e: IOException) {
-
-            e.printStackTrace()
-            message = e.message.toString()
-
-        } finally {
-
-            outputStream?.let {
-                it.flush()
-                it.close()
-            }
-        }
-
+    override fun showResultMessage(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 }
