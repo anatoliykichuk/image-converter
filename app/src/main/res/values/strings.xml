@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">ImageConverter</string>
+    <string name="convert_image_button_title">Select jpeg image to convert to png</string>
 </resources>
